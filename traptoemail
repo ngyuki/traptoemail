@@ -5,6 +5,7 @@
 # 
 # add "Date" header
 # add "Content-Type" header
+# add "-p" option (source IP address filter)
 
 # This is a snmptrapd handler script to convert snmp traps into email
 # messages.
@@ -19,15 +20,18 @@ use Net::SMTP;
 use Getopt::Std;
 use DateTime;
 use DateTime::Format::Mail;
+use Net::CIDR::Lite;
 
 $opts{'s'} = "localhost";
 $opts{'f'} = 'root@' . `hostname`;
+$opts{'i'} = '';
+$opts{'e'} = '';
 chomp($opts{'f'});
-getopts("hs:f:", \%opts);
+getopts("hs:f:i:e:", \%opts);
 
 if ($opts{'h'}) {
     print "
-traptoemail [-s smtpserver] [-f fromaddress] toaddress [...]
+traptoemail [-s smtpserver] [-f fromaddress] [-i sourceaddress] [-e sourceaddress] toaddress [...]
 
   traptoemail shouldn't be called interatively by a user.  It is
   designed to be called as an snmptrapd extension via a \"traphandle\"
@@ -37,6 +41,8 @@ traptoemail [-s smtpserver] [-f fromaddress] toaddress [...]
   Options:
     -s smtpserver      Sets the smtpserver for where to send the mail through.
     -f fromaddress     Sets the email address to be used on the From: line.
+    -i sourceaddress   Sets source IP address for white list(like CIDR list).
+    -e sourceaddress   Sets source IP address for black list(like CIDR list).
     toaddress          Where you want the email sent to.
 
 ";
@@ -50,6 +56,20 @@ $hostname = <STDIN>;
 chomp($hostname);
 $ipaddress = <STDIN>;
 chomp($ipaddress);
+
+if($ipaddress =~ /\[([^\]]+)\]/){
+    $source = $1;
+
+    if(length($opts{'i'})){
+        $cidr = Net::CIDR::Lite->new(split(/\s+/, $opts{'i'}));
+        exit if (!$cidr->find($source));
+    }
+
+    if(length($opts{'e'})){
+        $cidr = Net::CIDR::Lite->new(split(/\s+/, $opts{'e'}));
+        exit if ($cidr->find($source));
+    }
+}
 
 $maxlen = 0;
 while(<STDIN>) {
