@@ -1,12 +1,5 @@
 #!/usr/bin/perl
 
-# @author ngyuki
-# @original net-snmp-perl-5.7.2-24.el7_2.1.x86_64
-# 
-# add "Date" header
-# add "Content-Type" header
-# add "-p" option (source IP address filter)
-
 # This is a snmptrapd handler script to convert snmp traps into email
 # messages.
 
@@ -19,18 +12,15 @@
 use Net::SMTP;
 use Getopt::Std;
 use POSIX qw(strftime);
-use Net::CIDR::Lite;
 
 $opts{'s'} = "localhost";
 $opts{'f'} = 'root@' . `hostname`;
-$opts{'i'} = '';
-$opts{'e'} = '';
 chomp($opts{'f'});
-getopts("hs:f:i:e:", \%opts);
+getopts("hs:f:", \%opts);
 
 if ($opts{'h'}) {
     print "
-traptoemail [-s smtpserver] [-f fromaddress] [-i sourceaddress] [-e sourceaddress] toaddress [...]
+traptoemail [-s smtpserver] [-f fromaddress] toaddress [...]
 
   traptoemail shouldn't be called interatively by a user.  It is
   designed to be called as an snmptrapd extension via a \"traphandle\"
@@ -40,8 +30,6 @@ traptoemail [-s smtpserver] [-f fromaddress] [-i sourceaddress] [-e sourceaddres
   Options:
     -s smtpserver      Sets the smtpserver for where to send the mail through.
     -f fromaddress     Sets the email address to be used on the From: line.
-    -i sourceaddress   Sets source IP address for white list(like CIDR list).
-    -e sourceaddress   Sets source IP address for black list(like CIDR list).
     toaddress          Where you want the email sent to.
 
 ";
@@ -55,20 +43,6 @@ $hostname = <STDIN>;
 chomp($hostname);
 $ipaddress = <STDIN>;
 chomp($ipaddress);
-
-if($ipaddress =~ /\[([^\]]+)\]/){
-    $source = $1;
-
-    if(length($opts{'i'})){
-        $cidr = Net::CIDR::Lite->new(split(/\s+/, $opts{'i'}));
-        exit if (!$cidr->find($source));
-    }
-
-    if(length($opts{'e'})){
-        $cidr = Net::CIDR::Lite->new(split(/\s+/, $opts{'e'}));
-        exit if ($cidr->find($source));
-    }
-}
 
 $maxlen = 0;
 while(<STDIN>) {
@@ -91,9 +65,6 @@ $message->datasend("To: " . join(", ",@ARGV) . "\n");
 $message->datasend("From: $opts{f}\n");
 $message->datasend("Date: ".strftime("%a, %e %b %Y %X %z", localtime())."\n");
 $message->datasend("Subject: trap received from $hostname: $values[1]\n");
-
-$message->datasend("Content-Type: text/plain; charset=utf-8\n");
-
 $message->datasend("\n");
 $message->datasend("Host: $hostname ($ipaddress)\n");
 for($i = 0; $i <= $#oids; $i++) {

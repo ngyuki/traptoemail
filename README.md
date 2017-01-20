@@ -9,7 +9,7 @@
 # インストール
 
 ```console
-yum --enablerepo=epel install perl-DateTime perl-DateTime-Format-Mail perl-Net-CIDR-Lite
-wget https://raw.github.com/ngyuki/traptoemail/master/traptoemail
+yum --enablerepo=epel install perl-Net-CIDR-Lite
+wget https://raw.githubusercontent.com/ngyuki/traptoemail/master/traptoemail
 chmod +x traptoemail
 ```
